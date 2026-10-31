@@ -1,6 +1,6 @@
 # Noise schedule ablation in diffusion models
 
-Local experiment using InstructPix2Pix and SEN12MS summer. Run 0, both 20-epoch training runs, all 18,000 final predictions, checkpoint samples, trajectories and test metrics are complete. Fill the responsibility and signature fields on the final page of `report/report.docx` before handing in.
+Local experiment using InstructPix2Pix and SEN12MS summer. Run 0, both 20-epoch training runs, all 18,000 final predictions, checkpoint samples, trajectories and test metrics are complete.
 
 ## Contents
 
@@ -10,11 +10,8 @@ Local experiment using InstructPix2Pix and SEN12MS summer. Run 0, both 20-epoch 
 - `results/inference/0`, `A`, `B`: 6,000 labelled test predictions per run and their metadata.
 - `results/trajectories/A`, `B`: actual noisy latent tensors, decoded previews and timestep labels.
 - `results/metrics/`: LPIPS, PSNR, SSIM, per-image scores and loss curves.
-- `report/report.docx`: the report in the professor's nine-section order, with responsibility and signature spaces.
 - `provenance/`: environment, dataset checksums, schedule verification, execution metadata and original-versus-modified code.
 - `tests/`: the existing synthetic workflow and regression checks. These tests are not experiment results.
-
-Colab notebooks, Docker files, legacy starters, packaging utilities and unrelated intermediate tests were excluded. The original working project is unchanged. Raw archives, extracted TIFFs, cached pretrained weights and large trained model/optimizer weights are excluded. The commands below regenerate them.
 
 ## Local environment
 
@@ -27,7 +24,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 bash run.sh -m pytest -q tests
 ```
 
-Run commands from this directory. `run.sh` uses this folder's `.venv` and caches. On the original Mac, the existing results remain in the original working folder; this is the cleaned submission copy.
+Run commands from this directory. `run.sh` uses this folder's `.venv` and caches.
 
 ## Download and preparation
 
@@ -41,8 +38,6 @@ bash run.sh src/prepare.py render --manifest data/manifests/train.jsonl --stats 
 bash run.sh src/prepare.py render --manifest data/manifests/val.jsonl --stats data/statistics.json --outdir data/prepared/val --max-patches 1000
 bash run.sh src/prepare.py render --manifest data/manifests/test.jsonl --stats data/statistics.json --outdir data/prepared/test --max-patches 2000
 ```
-
-These commands recreate preparation artifacts. Recorded JSON files preserve the original execution paths and hashes; do not manually rewrite those files and treat them as a new execution. The original `outputs/experiment/` tree corresponds to the submitted `results/` tree. Re-running preparation generates paths valid on the current machine.
 
 ## Reproduce the three runs
 
@@ -67,4 +62,3 @@ Training checkpoints can be resumed with `--resume reproduced/runs/A/checkpoints
 | Original schedule A | 0.570881 | 12.436583 | 0.238348 |
 | Powered schedule B | 0.560575 | 13.640791 | 0.291870 |
 
-All scores include black outputs as saved. The report explains this limitation, the first visible checkpoint differences and the mathematical interpretation. No results have been replaced during cleanup.
