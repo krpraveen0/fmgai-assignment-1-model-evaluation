@@ -1,0 +1,47 @@
+[
+  {
+    "id": "1868_summer_100_p100",
+    "product": "true_color",
+    "prompt": "Show the matching true-colour Sentinel-2 image.",
+    "seed": 1541934295,
+    "run": "B",
+    "target": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/val/1868_summer_100_p100_true_color_GT.png",
+    "image": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/val/1868_summer_100_p100_SAR.png",
+    "image_sha256": "45a7e932d4a3d220eee88b4a119831fbb9026db1143ce6cb40427100058909de",
+    "prediction": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/runs/B/checkpoints/epoch_012/samples/B_00000_1868_summer_100_p100_true_color.png",
+    "prediction_sha256": "d71bb3b745a6bdbcde41aa87c9dc35f23af9aa44f459a92c9c143db30d4d2782",
+    "target_sha256": "943fa36785b6132d9bad63278be5f6b3b81628caf4b620281f4ef7a3ca0b4207",
+    "stats_sha256": "082af78f3786c2d7eda56bb71e8a1607fe568e08e97dc4ca6fa28c007f474990",
+    "states": []
+  },
+  {
+    "id": "1868_summer_100_p101",
+    "product": "true_color",
+    "prompt": "Generate a true-colour view of this SAR image.",
+    "seed": 3838104056,
+    "run": "B",
+    "target": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/val/1868_summer_100_p101_true_color_GT.png",
+    "image": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/val/1868_summer_100_p101_SAR.png",
+    "image_sha256": "96ee91a9bf9b315b60af7bdad5aada46078ebc80c4f93a3b1fd5001aa264dbad",
+    "prediction": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/runs/B/checkpoints/epoch_012/samples/B_00001_1868_summer_100_p101_true_color.png",
+    "prediction_sha256": "a83f50e48e1f9a6ad3f24a67906e7700573db13bdc7b4bd3147a2a1f534e78b7",
+    "target_sha256": "bc9481910fdbcf3ffeeb2b24e9c0076898b0d7e1705bc02fdb1026e48eef3608",
+    "stats_sha256": "082af78f3786c2d7eda56bb71e8a1607fe568e08e97dc4ca6fa28c007f474990",
+    "states": []
+  },
+  {
+    "id": "1868_summer_100_p102",
+    "product": "shortwave_ir",
+    "prompt": "Show the matching shortwave-infrared view.",
+    "seed": 4256634861,
+    "run": "B",
+    "target": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/val/1868_summer_100_p102_shortwave_ir_GT.png",
+    "image": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/val/1868_summer_100_p102_SAR.png",
+    "image_sha256": "6c26c91054f314cc3257ba99dba3233e1b38d75db825bb8e7b0175c76eb014d2",
+    "prediction": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/runs/B/checkpoints/epoch_012/samples/B_00002_1868_summer_100_p102_shortwave_ir.png",
+    "prediction_sha256": "ffc911a7bb97913fb431b64b3cb22ff4a456358638b66ea503023c8045a18204",
+    "target_sha256": "d5cc7871ee2a0b80f0b1604d8bff586492817450214eeb802eb699bc6b78a838",
+    "stats_sha256": "082af78f3786c2d7eda56bb71e8a1607fe568e08e97dc4ca6fa28c007f474990",
+    "states": []
+  }
+]

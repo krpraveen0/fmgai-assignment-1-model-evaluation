@@ -1,0 +1,9 @@
+{
+  "gpu_available": false,
+  "mps_available": true,
+  "selected_device": "mps",
+  "pytorch": "2.14.1",
+  "torch_cuda": null,
+  "cuda_bf16_supported": false,
+  "disk_free_gib": 361.4
+}

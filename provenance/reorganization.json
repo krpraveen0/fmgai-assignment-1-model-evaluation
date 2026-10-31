@@ -1,0 +1,41 @@
+{
+  "code_files": [
+    {
+      "executed_file": "phase2_core.py",
+      "submission_file": "src/core.py",
+      "executed_sha256": "28e856d018f314dfece99d82a161d5a22eb358412bbfc0594cd6c9de50007b6f",
+      "submission_sha256": "28e856d018f314dfece99d82a161d5a22eb358412bbfc0594cd6c9de50007b6f",
+      "change": "Module names and imports only; normalized Python AST identical"
+    },
+    {
+      "executed_file": "phase2_config.py",
+      "submission_file": "src/config.py",
+      "executed_sha256": "6bc2322401c9e607ed1b42f0b701be2ab2a4611df52014f05c3982b31d97899c",
+      "submission_sha256": "c8b323222a8e5b3f4755a23795ece63b10573813135e0b4702c0febcb7658630",
+      "change": "Module names and imports only; normalized Python AST identical"
+    },
+    {
+      "executed_file": "phase2_runner.py",
+      "submission_file": "src/prepare.py",
+      "executed_sha256": "225648cb559ff1c9295b0c877699e49aec2b81819e7c79b12622e50f210e3ac4",
+      "submission_sha256": "87fcc9fda7816e4426bc96f130dd9aac5409158d9cdc506572d4cd36f265c408",
+      "change": "Module names and imports only; normalized Python AST identical"
+    },
+    {
+      "executed_file": "phase2_experiment.py",
+      "submission_file": "src/experiment.py",
+      "executed_sha256": "7975ba74be95e793a4edced62de3718c853fd1f53d4c25270acf3a94c92ab901",
+      "submission_sha256": "439f9301362bf4cb2f973c3206580aa3293ab0a242603f89aa6c6b9df3d028c3",
+      "change": "Module names and imports only; normalized Python AST identical"
+    },
+    {
+      "executed_file": "download_data.py",
+      "submission_file": "src/download.py",
+      "executed_sha256": "cd682fd2086e6aae34779272b2572d443c0744f6b2522714889ba5d9c3b86f0b",
+      "submission_sha256": "cd682fd2086e6aae34779272b2572d443c0744f6b2522714889ba5d9c3b86f0b",
+      "change": "Module names and imports only; normalized Python AST identical"
+    }
+  ],
+  "result_files_copied": 18194,
+  "result_metadata": "Original execution metadata retained unchanged, including absolute paths and hashes. Directory mapping: outputs/experiment -> results; outputs/manifests -> data/manifests; outputs/train_stats.json -> data/statistics.json. Reproduction regenerates paths on the new machine."
+}

@@ -1,0 +1,47 @@
+{
+  "source_manifest": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/manifests/train.jsonl",
+  "source_sha256": "b7ef19e44566f923c80f6b739286ddc6e4f7d274eea472c6defff3b99c015294",
+  "split": "train",
+  "sampled_patches": 10000,
+  "pixels_per_patch": 128,
+  "seed": 20261004,
+  "stats": {
+    "SAR_VV": [
+      -22.658588409423828,
+      -1.7861119508743286
+    ],
+    "SAR_VH": [
+      -30.965517044067383,
+      -8.902480125427246
+    ],
+    "SAR_DIFF": [
+      0.9923208951950073,
+      13.241334915161133
+    ],
+    "B02": [
+      735.0,
+      1637.0
+    ],
+    "B03": [
+      494.0,
+      1762.0
+    ],
+    "B04": [
+      269.0,
+      2240.0
+    ],
+    "B08": [
+      140.0,
+      4029.0
+    ],
+    "B8A": [
+      131.0,
+      4479.0
+    ],
+    "B12": [
+      20.0,
+      2903.0
+    ]
+  },
+  "warning": "Sampled pixel quantiles (reproducible estimate); not exact all-pixel quantiles"
+}

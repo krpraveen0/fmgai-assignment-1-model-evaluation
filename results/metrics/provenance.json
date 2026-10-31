@@ -1,0 +1,71 @@
+{
+  "config": {
+    "source": "Completed Phase 1 design plus explicitly selected Phase 2 implementation settings",
+    "model_id": "timbrooks/instruct-pix2pix",
+    "model_revision": "31519b5cb02a7fd89b906d88731cd4d6a7bbf88d",
+    "dataset": "SEN12MS/ROIs1868_summer",
+    "train_patches": 10000,
+    "val_patches": 1000,
+    "test_patches": 2000,
+    "resolution": [
+      256,
+      256
+    ],
+    "native_theta": "alpha_bar",
+    "noise_power": 2.0,
+    "noise_steps": 1000,
+    "train_epochs": 20,
+    "optimizer": "AdamW",
+    "weight_decay": 0.01,
+    "learning_rate": 5e-05,
+    "effective_batch_size": 64,
+    "gradient_clip": 1.0,
+    "conditioning_dropout": 0.05,
+    "precision": "bf16",
+    "seed": 20261004,
+    "checkpoints_epochs": [
+      4,
+      8,
+      12,
+      16,
+      20
+    ],
+    "inference_sampler": "EulerAncestralDiscreteScheduler",
+    "inference_steps": 50,
+    "text_guidance_scale": 7.5,
+    "image_guidance_scale": 1.5,
+    "trainable": [
+      "UNet"
+    ],
+    "frozen": [
+      "VAE",
+      "text encoder"
+    ],
+    "no_augmentation": true,
+    "validation_frequency": "once per epoch",
+    "metrics": [
+      "LPIPS",
+      "PSNR",
+      "SSIM"
+    ],
+    "micro_batch_size": 1,
+    "validation_examples": 1000,
+    "validation_metric": "native_schedule_epsilon_mse",
+    "trajectory_steps": 5,
+    "evidence_samples": 3,
+    "device": "auto",
+    "inference_precision": "float32",
+    "beta_start": 0.00085,
+    "beta_end": 0.012,
+    "beta_schedule": "scaled_linear"
+  },
+  "samples": {
+    "0": "1e76c83263bd3b3e104c4f3c55eafe9a07419b26296a6888c6ada04a3a3b3d51",
+    "A": "b313b38b43d007f3fbec35e9699146145515d18dc207d0f67e2c905b34d53cfd",
+    "B": "a70ea6aa02a6a31a4f86d53da5573d7a3ac1c7bdd7916e9a6a246d15e87a3796"
+  },
+  "losses": {
+    "A": "242978210900491677b38c03fe74fd560c301f4fda12be8b470f055cbf134f43",
+    "B": "c6b8f1913d8ffc22e07ab4e6608605ca0bf71a097d562538af6c24997106275a"
+  }
+}

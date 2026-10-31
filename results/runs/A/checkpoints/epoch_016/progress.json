@@ -1,0 +1,77 @@
+{
+  "epoch": 16,
+  "resolved": {
+    "config": {
+      "source": "Completed Phase 1 design plus explicitly selected Phase 2 implementation settings",
+      "model_id": "timbrooks/instruct-pix2pix",
+      "model_revision": "31519b5cb02a7fd89b906d88731cd4d6a7bbf88d",
+      "dataset": "SEN12MS/ROIs1868_summer",
+      "train_patches": 10000,
+      "val_patches": 1000,
+      "test_patches": 2000,
+      "resolution": [
+        256,
+        256
+      ],
+      "native_theta": "alpha_bar",
+      "noise_power": 2.0,
+      "noise_steps": 1000,
+      "train_epochs": 20,
+      "optimizer": "AdamW",
+      "weight_decay": 0.01,
+      "learning_rate": 5e-05,
+      "effective_batch_size": 64,
+      "gradient_clip": 1.0,
+      "conditioning_dropout": 0.05,
+      "precision": "bf16",
+      "seed": 20261004,
+      "checkpoints_epochs": [
+        4,
+        8,
+        12,
+        16,
+        20
+      ],
+      "inference_sampler": "EulerAncestralDiscreteScheduler",
+      "inference_steps": 50,
+      "text_guidance_scale": 7.5,
+      "image_guidance_scale": 1.5,
+      "trainable": [
+        "UNet"
+      ],
+      "frozen": [
+        "VAE",
+        "text encoder"
+      ],
+      "no_augmentation": true,
+      "validation_frequency": "once per epoch",
+      "metrics": [
+        "LPIPS",
+        "PSNR",
+        "SSIM"
+      ],
+      "micro_batch_size": 1,
+      "validation_examples": 1000,
+      "validation_metric": "native_schedule_epsilon_mse",
+      "trajectory_steps": 5,
+      "evidence_samples": 3,
+      "device": "auto",
+      "inference_precision": "float32",
+      "beta_start": 0.00085,
+      "beta_end": 0.012,
+      "beta_schedule": "scaled_linear"
+    },
+    "run": "A",
+    "diagnostic": false,
+    "actual_effective_batch_size": 64,
+    "initial_model_sha256": "2154f0834476a36fe15382142f5421b7a60264bec38955f7c914284598400b23",
+    "input_hashes": {
+      "train": "1044bdce12a98887a8ebc11eff0625a5e73e8421b171bef063f3120f2d3bef83",
+      "val": "2dc8d0a4cc182491c44a57e5abf7a125912b52e49eaa749c2c47871ef7e6fc24",
+      "test": "00460e937de5825f26db753cc2900cd1b8d0bda2b6f72e17cfd58206a51e425c"
+    },
+    "device": "mps",
+    "python": "3.12.11",
+    "torch": "2.14.1"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "code": "Five runtime modules preserve normalized executed ASTs; module and import names simplified",
+  "tests": "9 existing runtime tests passed; packaging-only test excluded with removed utility",
+  "report_sections": [
+    "Task and Model",
+    "Dataset and Verification",
+    "Schedule Analysis",
+    "Experimental Setup",
+    "Implementation",
+    "Results",
+    "Analysis",
+    "Takeaway",
+    "Contribution Statement"
+  ],
+  "report_pages": 13,
+  "all_pages_visually_checked": true,
+  "embedded_figures": 12,
+  "predictions": {
+    "0": 6000,
+    "A": 6000,
+    "B": 6000
+  },
+  "checkpoints": {
+    "A": [
+      "epoch_004",
+      "epoch_008",
+      "epoch_012",
+      "epoch_016",
+      "epoch_020"
+    ],
+    "B": [
+      "epoch_004",
+      "epoch_008",
+      "epoch_012",
+      "epoch_016",
+      "epoch_020"
+    ]
+  },
+  "result_files_verified_byte_for_byte": 18194,
+  "responsibilities_and_signatures": "Blank for the four named group members",
+  "omitted": "Colab notebooks, Docker, obsolete starters, packaging utilities, raw datasets, cached weights and optimizer/model weights"
+}

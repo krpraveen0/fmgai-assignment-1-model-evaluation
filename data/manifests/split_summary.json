@@ -1,0 +1,17 @@
+{
+  "test": {
+    "patches": 2000,
+    "rois": 3,
+    "sha256": "52e9741357ab26341428f28ea30232c210a44a079a347eee69a426224490d7f8"
+  },
+  "val": {
+    "patches": 1000,
+    "rois": 2,
+    "sha256": "3f345c0593f7471e15f0b4996bfa799ac0a35791de852f078beccd07a95d87d5"
+  },
+  "train": {
+    "patches": 10000,
+    "rois": 16,
+    "sha256": "b7ef19e44566f923c80f6b739286ddc6e4f7d274eea472c6defff3b99c015294"
+  }
+}

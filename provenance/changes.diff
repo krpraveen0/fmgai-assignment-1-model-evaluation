@@ -1,0 +1,1202 @@
+--- original/core.py
++++ src/core.py
+@@ -1,273 +1,495 @@
+ # ADDED
+-"""SEN12MS preparation and noise-schedule checks."""
+-import csv
+-import hashlib
+-import json
+-import re
+-from collections import defaultdict
+-from pathlib import Path
+-
+-import numpy as np
++"""SEN12MS preparation and noise-schedule checks."""  # ADDED
++
++import csv  # ADDED
++import hashlib  # ADDED
++import json  # ADDED
++import re  # ADDED
++from collections import defaultdict  # ADDED
++from pathlib import Path  # ADDED
++
++import numpy as np  # ADDED
+ 
+ SEED = 20261004  # ADDED
+ NOISE_POWER = 2.00  # ADDED
+-MODEL_ID = 'timbrooks/instruct-pix2pix'  # ADDED
+-MODEL_REVISION = '31519b5cb02a7fd89b906d88731cd4d6a7bbf88d'  # ADDED
++MODEL_ID = "timbrooks/instruct-pix2pix"  # MODIFIED
++MODEL_REVISION = "31519b5cb02a7fd89b906d88731cd4d6a7bbf88d"  # MODIFIED
+ TRAIN_N, VAL_N, TEST_N = 10000, 1000, 2000  # ADDED
+ PRODUCTS = {  # ADDED
+-    'true_color': ('B04', 'B03', 'B02'),
+-    'false_color_ir': ('B08', 'B04', 'B03'),
+-    'shortwave_ir': ('B12', 'B8A', 'B04'),
+-}
++    "true_color": ("B04", "B03", "B02"),  # MODIFIED
++    "false_color_ir": ("B08", "B04", "B03"),  # MODIFIED
++    "shortwave_ir": ("B12", "B8A", "B04"),  # MODIFIED
++}  # ADDED
+ # ADDED: Prompts name only the requested composite.
+-PROMPTS = {
+-    'true_color': 'Create the true-colour Sentinel-2 composite.',
+-    'false_color_ir': 'Create the false-colour infrared Sentinel-2 composite.',
+-    'shortwave_ir': 'Create the shortwave-infrared Sentinel-2 composite.',
+-}
++PROMPTS = {  # ADDED
++    "true_color": "Create the true-colour Sentinel-2 composite.",  # MODIFIED
++    "false_color_ir": "Create the false-colour infrared Sentinel-2 composite.",  # MODIFIED
++    "shortwave_ir": "Create the shortwave-infrared Sentinel-2 composite.",  # MODIFIED
++}  # ADDED
+ # ADDED: Eight train/validation templates and four test templates.
+-TEMPLATES = {
+- 'true_color': [
+-  'Create the true-colour Sentinel-2 composite.', 'Produce the true-colour optical view.',
+-  'Render this SAR patch in true colour.', 'Show the matching true-colour Sentinel-2 image.',
+-  'Generate the RGB natural-colour composite.', 'Make a true-colour satellite rendering.',
+-  'Create the visible-band colour product.', 'Generate a true-colour view of this SAR image.',
+-  'Render the corresponding natural RGB product.', 'Produce the visible-light colour composite.',
+-  'Show this area using true-colour optical bands.', 'Convert this SAR input into true-colour Sentinel-2.'
+- ],
+- 'false_color_ir': [
+-  'Create the false-colour infrared composite.', 'Produce a false-colour NIR view.',
+-  'Render this SAR patch as false-colour infrared.', 'Show the matching false-colour optical view.',
+-  'Generate the B8-B4-B3 composite.', 'Create the false-colour infrared satellite rendering.',
+-  'Generate the NIR-R-G band composite.', 'Produce the infrared false-colour product.',
+-  'Render the corresponding false-colour infrared image.', 'Show the false-colour NIR composite.',
+-  'Create the optical composite using NIR, red and green.', 'Convert this SAR input to false-colour infrared.'
+- ],
+- 'shortwave_ir': [
+-  'Create the shortwave-infrared composite.', 'Produce a SWIR composite view.',
+-  'Render the SAR patch using the SWIR product.', 'Show the matching shortwave-infrared view.',
+-  'Generate the B12-B8A-B4 composite.', 'Create the shortwave-infrared satellite rendering.',
+-  'Generate the SWIR-NIR-red composite.', 'Produce the shortwave-infrared optical product.',
+-  'Render the corresponding shortwave-infrared image.', 'Show this patch as a SWIR composite.',
+-  'Create the optical product using B12, B8A and B4.', 'Convert this SAR input to shortwave infrared.'
+- ]
+-}
+-assert all(len(v) == 12 for v in TEMPLATES.values())
+-
+-S2_BANDS = ('B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B8A', 'B09', 'B10', 'B11', 'B12')
+-STAT_CHANNELS = ('SAR_VV', 'SAR_VH', 'SAR_DIFF', 'B02', 'B03', 'B04', 'B08', 'B8A', 'B12')
+-
+-
+-def native_schedule():
+-    """Exact scaled_linear beta schedule in the declared 1000-step checkpoint."""
+-    beta = np.linspace(np.sqrt(.00085), np.sqrt(.012), 1000, dtype=np.float64) ** 2
+-    alpha = 1.0 - beta
+-    ab = np.cumprod(alpha)
+-    return beta, alpha, ab
+-
+-
+-def power_schedule():
+-    """Reconstruct beta' from declared theta'=alpha_bar**2.00."""
+-    beta, alpha, ab = native_schedule()
+-    ap = alpha ** NOISE_POWER
+-    bp = 1.0 - ap
+-    abp = np.cumprod(ap)
+-    np.testing.assert_allclose(abp, ab ** NOISE_POWER, rtol=1e-11, atol=1e-15)
+-    assert np.all((ab > 0) & (ab < 1))
+-    assert np.all((abp > 0) & (abp < 1))
+-    assert np.all((bp > 0) & (bp < 1))
+-    assert 1.5 < NOISE_POWER < 3
+-    return bp, abp
+-
+-
+-def save_schedule(outdir):
+-    import matplotlib.pyplot as plt
+-    outdir = Path(outdir); outdir.mkdir(parents=True, exist_ok=True)
+-    beta, alpha, ab = native_schedule(); bp, abp = power_schedule()
+-    rows = []
+-    for i in range(1000):
+-        sa = ab[i] / (1 - ab[i]); sb = abp[i] / (1 - abp[i])
+-        rows.append([i + 1, beta[i], bp[i], alpha[i], ab[i], abp[i], np.log(sa), np.log(sb)])
+-    header = ['t', 'beta_native', 'beta_powered', 'alpha_native', 'alpha_bar_native', 'alpha_bar_powered', 'log_snr_native', 'log_snr_powered']
+-    with (outdir / 'schedule_all_1000.csv').open('w', newline='') as f:
+-        w = csv.writer(f); w.writerow(header); w.writerows(rows)
+-    with (outdir / 'schedule_five_steps.csv').open('w', newline='') as f:
+-        w = csv.writer(f); w.writerow(header); w.writerows(rows[i] for i in [0, 249, 499, 749, 999])
+-    t = np.arange(1, 1001)
+-    fig, ax = plt.subplots(figsize=(9, 5))
+-    ax.semilogy(t, ab, label='Run A: native alpha-bar', linewidth=2)
+-    ax.semilogy(t, abp, '--', label='Run B: alpha-bar raised to 2.00', linewidth=2)
+-    ax.set(xlabel='Diffusion timestep (1-based)', ylabel='Cumulative signal retention (log)', title='Original vs powered training schedule')
+-    ax.grid(True, alpha=.25); ax.legend(); fig.tight_layout()
+-    fig.savefig(outdir / 'schedule_comparison.png', dpi=180); plt.close(fig)
+-    fig, ax = plt.subplots(figsize=(9, 5))
+-    ax.plot(t, np.log(ab / (1-ab)), label='Run A')
+-    ax.plot(t, np.log(abp / (1-abp)), label='Run B')
+-    ax.set(xlabel='Diffusion timestep (1-based)', ylabel='Natural log SNR', title='SNR change from schedule power')
+-    ax.grid(True, alpha=.25); ax.legend(); fig.tight_layout()
+-    fig.savefig(outdir / 'log_snr_comparison.png', dpi=180); plt.close(fig)
+-    print(f'Schedule audited: T=1000, alpha_bar_T={ab[-1]:.8f}, powered={abp[-1]:.8f}')
+-
+-
+-def pair_inventory(root):
+-    """Find matching summer SAR and optical patches."""
+-    root = Path(root)
+-    s1_files = sorted(root.rglob('ROIs1868_summer_s1_*_p*.tif'))
+-    if not s1_files:
+-        raise FileNotFoundError(f'No extracted summer S1 TIFFs under {root}. Extract both SEN12MS archives first.')
+-    records, missing = [], []
+-    for p in s1_files:
+-        m = re.fullmatch(r'ROIs1868_summer_s1_(\d+)_p(\d+)\.tif', p.name)
+-        if not m:
+-            continue
+-        roi, patch = m.groups()
+-        s2name = p.name.replace('_s1_', '_s2_')
++TEMPLATES = {  # ADDED
++    "true_color": [  # MODIFIED
++        "Create the true-colour Sentinel-2 composite.",  # MODIFIED
++        "Produce the true-colour optical view.",  # MODIFIED
++        "Render this SAR patch in true colour.",  # MODIFIED
++        "Show the matching true-colour Sentinel-2 image.",  # MODIFIED
++        "Generate the RGB natural-colour composite.",  # MODIFIED
++        "Make a true-colour satellite rendering.",  # MODIFIED
++        "Create the visible-band colour product.",  # MODIFIED
++        "Generate a true-colour view of this SAR image.",  # MODIFIED
++        "Render the corresponding natural RGB product.",  # MODIFIED
++        "Produce the visible-light colour composite.",  # MODIFIED
++        "Show this area using true-colour optical bands.",  # MODIFIED
++        "Convert this SAR input into true-colour Sentinel-2.",  # MODIFIED
++    ],  # ADDED
++    "false_color_ir": [  # MODIFIED
++        "Create the false-colour infrared composite.",  # MODIFIED
++        "Produce a false-colour NIR view.",  # MODIFIED
++        "Render this SAR patch as false-colour infrared.",  # MODIFIED
++        "Show the matching false-colour optical view.",  # MODIFIED
++        "Generate the B8-B4-B3 composite.",  # MODIFIED
++        "Create the false-colour infrared satellite rendering.",  # MODIFIED
++        "Generate the NIR-R-G band composite.",  # MODIFIED
++        "Produce the infrared false-colour product.",  # MODIFIED
++        "Render the corresponding false-colour infrared image.",  # MODIFIED
++        "Show the false-colour NIR composite.",  # MODIFIED
++        "Create the optical composite using NIR, red and green.",  # MODIFIED
++        "Convert this SAR input to false-colour infrared.",  # MODIFIED
++    ],  # ADDED
++    "shortwave_ir": [  # MODIFIED
++        "Create the shortwave-infrared composite.",  # MODIFIED
++        "Produce a SWIR composite view.",  # MODIFIED
++        "Render the SAR patch using the SWIR product.",  # MODIFIED
++        "Show the matching shortwave-infrared view.",  # MODIFIED
++        "Generate the B12-B8A-B4 composite.",  # MODIFIED
++        "Create the shortwave-infrared satellite rendering.",  # MODIFIED
++        "Generate the SWIR-NIR-red composite.",  # MODIFIED
++        "Produce the shortwave-infrared optical product.",  # MODIFIED
++        "Render the corresponding shortwave-infrared image.",  # MODIFIED
++        "Show this patch as a SWIR composite.",  # MODIFIED
++        "Create the optical product using B12, B8A and B4.",  # MODIFIED
++        "Convert this SAR input to shortwave infrared.",  # MODIFIED
++    ],  # MODIFIED
++}  # ADDED
++assert all(len(v) == 12 for v in TEMPLATES.values())  # ADDED
++
++S2_BANDS = (  # MODIFIED
++    "B01",  # MODIFIED
++    "B02",  # MODIFIED
++    "B03",  # MODIFIED
++    "B04",  # MODIFIED
++    "B05",  # MODIFIED
++    "B06",  # MODIFIED
++    "B07",  # MODIFIED
++    "B08",  # MODIFIED
++    "B8A",  # MODIFIED
++    "B09",  # MODIFIED
++    "B10",  # MODIFIED
++    "B11",  # MODIFIED
++    "B12",  # MODIFIED
++)  # MODIFIED
++STAT_CHANNELS = (  # MODIFIED
++    "SAR_VV",  # MODIFIED
++    "SAR_VH",  # MODIFIED
++    "SAR_DIFF",  # MODIFIED
++    "B02",  # MODIFIED
++    "B03",  # MODIFIED
++    "B04",  # MODIFIED
++    "B08",  # MODIFIED
++    "B8A",  # MODIFIED
++    "B12",  # MODIFIED
++)  # MODIFIED
++
++
++def native_schedule():  # ADDED
++    """Exact scaled_linear beta schedule in the declared 1000-step checkpoint."""  # ADDED
++    beta = np.linspace(np.sqrt(0.00085), np.sqrt(0.012), 1000, dtype=np.float64) ** 2  # MODIFIED
++    alpha = 1.0 - beta  # ADDED
++    ab = np.cumprod(alpha)  # ADDED
++    return beta, alpha, ab  # ADDED
++
++
++def power_schedule():  # ADDED
++    """Reconstruct beta' from declared theta'=alpha_bar**2.00."""  # ADDED
++    beta, alpha, ab = native_schedule()  # ADDED
++    ap = alpha**NOISE_POWER  # MODIFIED
++    bp = 1.0 - ap  # ADDED
++    abp = np.cumprod(ap)  # ADDED
++    np.testing.assert_allclose(abp, ab**NOISE_POWER, rtol=1e-11, atol=1e-15)  # MODIFIED
++    assert np.all((ab > 0) & (ab < 1))  # ADDED
++    assert np.all((abp > 0) & (abp < 1))  # ADDED
++    assert np.all((bp > 0) & (bp < 1))  # ADDED
++    assert 1.5 < NOISE_POWER < 3  # ADDED
++    return bp, abp  # ADDED
++
++
++def save_schedule(outdir):  # ADDED
++    import matplotlib.pyplot as plt  # ADDED
++
++    outdir = Path(outdir)  # MODIFIED
++    outdir.mkdir(parents=True, exist_ok=True)  # MODIFIED
++    beta, alpha, ab = native_schedule()  # MODIFIED
++    bp, abp = power_schedule()  # MODIFIED
++    rows = []  # ADDED
++    for i in range(1000):  # ADDED
++        sa = ab[i] / (1 - ab[i])  # MODIFIED
++        sb = abp[i] / (1 - abp[i])  # MODIFIED
++        rows.append(  # MODIFIED
++            [i + 1, beta[i], bp[i], alpha[i], ab[i], abp[i], np.log(sa), np.log(sb)]  # MODIFIED
++        )  # MODIFIED
++    header = [  # MODIFIED
++        "t",  # MODIFIED
++        "beta_native",  # MODIFIED
++        "beta_powered",  # MODIFIED
++        "alpha_native",  # MODIFIED
++        "alpha_bar_native",  # MODIFIED
++        "alpha_bar_powered",  # MODIFIED
++        "log_snr_native",  # MODIFIED
++        "log_snr_powered",  # MODIFIED
++    ]  # MODIFIED
++    with (outdir / "schedule_all_1000.csv").open("w", newline="") as f:  # MODIFIED
++        w = csv.writer(f)  # MODIFIED
++        w.writerow(header)  # MODIFIED
++        w.writerows(rows)  # MODIFIED
++    with (outdir / "schedule_five_steps.csv").open("w", newline="") as f:  # MODIFIED
++        w = csv.writer(f)  # MODIFIED
++        w.writerow(header)  # MODIFIED
++        w.writerows(rows[i] for i in [0, 249, 499, 749, 999])  # MODIFIED
++    t = np.arange(1, 1001)  # ADDED
++    fig, ax = plt.subplots(figsize=(9, 5))  # ADDED
++    ax.semilogy(t, ab, label="Run A: native alpha-bar", linewidth=2)  # MODIFIED
++    ax.semilogy(t, abp, "--", label="Run B: alpha-bar raised to 2.00", linewidth=2)  # MODIFIED
++    ax.set(  # MODIFIED
++        xlabel="Diffusion timestep (1-based)",  # MODIFIED
++        ylabel="Cumulative signal retention (log)",  # MODIFIED
++        title="Original vs powered training schedule",  # MODIFIED
++    )  # MODIFIED
++    ax.grid(True, alpha=0.25)  # MODIFIED
++    ax.legend()  # MODIFIED
++    fig.tight_layout()  # MODIFIED
++    fig.savefig(outdir / "schedule_comparison.png", dpi=180)  # MODIFIED
++    plt.close(fig)  # MODIFIED
++    fig, ax = plt.subplots(figsize=(9, 5))  # ADDED
++    ax.plot(t, np.log(ab / (1 - ab)), label="Run A")  # MODIFIED
++    ax.plot(t, np.log(abp / (1 - abp)), label="Run B")  # MODIFIED
++    ax.set(  # MODIFIED
++        xlabel="Diffusion timestep (1-based)",  # MODIFIED
++        ylabel="Natural log SNR",  # MODIFIED
++        title="SNR change from schedule power",  # MODIFIED
++    )  # MODIFIED
++    ax.grid(True, alpha=0.25)  # MODIFIED
++    ax.legend()  # MODIFIED
++    fig.tight_layout()  # MODIFIED
++    fig.savefig(outdir / "log_snr_comparison.png", dpi=180)  # MODIFIED
++    plt.close(fig)  # MODIFIED
++    print(f"Schedule audited: T=1000, alpha_bar_T={ab[-1]:.8f}, powered={abp[-1]:.8f}")  # MODIFIED
++
++
++def pair_inventory(root):  # ADDED
++    """Find matching summer SAR and optical patches."""  # ADDED
++    root = Path(root)  # ADDED
++    s1_files = sorted(root.rglob("ROIs1868_summer_s1_*_p*.tif"))  # MODIFIED
++    if not s1_files:  # ADDED
++        raise FileNotFoundError(  # MODIFIED
++            f"No extracted summer S1 TIFFs under {root}. Extract both SEN12MS archives first."  # MODIFIED
++        )  # MODIFIED
++    records, missing = [], []  # ADDED
++    for p in s1_files:  # ADDED
++        m = re.fullmatch(r"ROIs1868_summer_s1_(\d+)_p(\d+)\.tif", p.name)  # MODIFIED
++        if not m:  # ADDED
++            continue  # ADDED
++        roi, patch = m.groups()  # ADDED
++        s2name = p.name.replace("_s1_", "_s2_")  # MODIFIED
+         # ADDED: Match s1_<ROI> to s2_<ROI>.
+-        s2dir = p.parent.name.replace('s1_', 's2_')
+-        q = p.parent.parent / s2dir / s2name
+-        if not q.exists():
++        s2dir = p.parent.name.replace("s1_", "s2_")  # MODIFIED
++        q = p.parent.parent / s2dir / s2name  # ADDED
++        if not q.exists():  # ADDED
+             # ADDED: Also support flattened folders.
+-            q = p.parent / s2name
+-        if not q.exists():
+-            missing.append(p.name); continue
+-        records.append({'id': f'1868_summer_{roi}_p{patch}', 'roi': roi, 's1': str(p.resolve()), 's2': str(q.resolve())})
+-    if missing:
+-        raise RuntimeError(f'{len(missing)} missing S2 matches; examples: {missing[:5]}')
+-    if not records:
+-        raise RuntimeError('No valid SEN12MS S1/S2 pairs found')
+-    if len({r['id'] for r in records}) != len(records):
+-        raise RuntimeError('Duplicate patch identifiers found')
+-    return records
+-
+-
+-def validate_pair(row):
+-    import rasterio
+-    with rasterio.open(row['s1']) as s1, rasterio.open(row['s2']) as s2:
+-        assert s1.count == 2, f'Expected VV/VH two bands: {row["s1"]}'
+-        assert s2.count == 13, f'Expected Sentinel-2 13 bands: {row["s2"]}'
+-        assert (s1.width, s1.height, s2.width, s2.height) == (256, 256, 256, 256)
+-        a = s1.read(); b = s2.read()
+-        if not np.all(np.isfinite(a)) or not np.all(np.isfinite(b)):
+-            raise ValueError(f'NaN/Inf in {row["id"]}')
++            q = p.parent / s2name  # ADDED
++        if not q.exists():  # ADDED
++            missing.append(p.name)  # MODIFIED
++            continue  # MODIFIED
++        records.append(  # MODIFIED
++            {  # MODIFIED
++                "id": f"1868_summer_{roi}_p{patch}",  # MODIFIED
++                "roi": roi,  # MODIFIED
++                "s1": str(p.resolve()),  # MODIFIED
++                "s2": str(q.resolve()),  # MODIFIED
++            }  # MODIFIED
++        )  # MODIFIED
++    if missing:  # ADDED
++        raise RuntimeError(  # MODIFIED
++            f"{len(missing)} missing S2 matches; examples: {missing[:5]}"  # MODIFIED
++        )  # MODIFIED
++    if not records:  # ADDED
++        raise RuntimeError("No valid SEN12MS S1/S2 pairs found")  # MODIFIED
++    if len({r["id"] for r in records}) != len(records):  # MODIFIED
++        raise RuntimeError("Duplicate patch identifiers found")  # MODIFIED
++    return records  # ADDED
++
++
++def validate_pair(row):  # ADDED
++    import rasterio  # ADDED
++
++    with rasterio.open(row["s1"]) as s1, rasterio.open(row["s2"]) as s2:  # MODIFIED
++        if s1.count != 2 or s2.count != 13:  # MODIFIED
++            raise ValueError(f"Wrong band counts: {row['id']}")  # MODIFIED
++        if (s1.width, s1.height, s2.width, s2.height) != (256, 256, 256, 256):  # MODIFIED
++            raise ValueError(f"Wrong dimensions: {row['id']}")  # MODIFIED
++        if s1.crs is None or s2.crs is None or s1.crs != s2.crs:  # MODIFIED
++            raise ValueError(f"Missing or different CRS: {row['id']}")  # MODIFIED
++        if not np.allclose(tuple(s1.transform), tuple(s2.transform), rtol=0, atol=1e-6):  # MODIFIED
++            raise ValueError(f"Pixel-grid mismatch: {row['id']}")  # MODIFIED
++        if not np.all(s1.read_masks() == 255) or not np.all(s2.read_masks() == 255):  # MODIFIED
++            raise ValueError(f"Invalid/nodata pixels: {row['id']}")  # MODIFIED
++        a = s1.read()  # MODIFIED
++        b = s2.read()  # MODIFIED
++        if not np.all(np.isfinite(a)) or not np.all(np.isfinite(b)):  # ADDED
++            raise ValueError(f"NaN/Inf in {row['id']}")  # MODIFIED
+         # ADDED: Check CRS when both files provide it.
+-        if s1.crs and s2.crs and s1.crs != s2.crs:
+-            raise ValueError(f'CRS mismatch: {row["id"]}')
+-        return a, b
+-
+-
+-def group_splits(records, train_n=TRAIN_N, val_n=VAL_N, test_n=TEST_N, seed=SEED):
+-    """Allocate entire ROI groups to disjoint splits, then select exact patch counts."""
+-    groups = defaultdict(list)
+-    for r in records:
+-        groups[r['roi']].append(r)
+-    keys = sorted(groups)
+-    rng = np.random.default_rng(seed)
+-    rng.shuffle(keys)
+-    targets = [('test', test_n), ('val', val_n), ('train', train_n)]
+-    cursor, result = 0, {}
+-    for split, target in targets:
+-        available = []
+-        while len(available) < target and cursor < len(keys):
+-            roi = keys[cursor]; cursor += 1
+-            available += groups[roi]
+-        if len(available) < target:
+-            raise ValueError(f'Not enough ROI-separated pairs for {split}: need {target}; have {len(available)}')
+-        rng.shuffle(available)
+-        result[split] = available[:target]
+-    assert len(set(r['roi'] for r in result['train']) & set(r['roi'] for r in result['test'])) == 0
+-    assert len(set(r['roi'] for r in result['train']) & set(r['roi'] for r in result['val'])) == 0
+-    assert len(set(r['roi'] for r in result['val']) & set(r['roi'] for r in result['test'])) == 0
+-    return result
+-
+-
+-def write_manifest(splits, outdir):
+-    outdir = Path(outdir); outdir.mkdir(parents=True, exist_ok=True)
+-    for split, records in splits.items():
+-        with (outdir / f'{split}.jsonl').open('w') as f:
+-            for row in sorted(records, key=lambda r:r['id']):
+-                f.write(json.dumps(row) + '\n')
+-    with (outdir / 'split_summary.json').open('w') as f:
+-        json.dump({s: {'patches':len(v), 'rois':len(set(r['roi'] for r in v))} for s,v in splits.items()},f,indent=2)
+-
+-
+-def load_jsonl(path):
+-    with open(path) as f: return [json.loads(line) for line in f if line.strip()]
+-
+-
+-def array_channels(s1, s2):
++        if s1.crs and s2.crs and s1.crs != s2.crs:  # ADDED
++            raise ValueError(f"CRS mismatch: {row['id']}")  # MODIFIED
++        return a, b  # ADDED
++
++
++def group_splits(records, train_n=TRAIN_N, val_n=VAL_N, test_n=TEST_N, seed=SEED):  # ADDED
++    """Allocate entire ROI groups to disjoint splits, then select exact patch counts."""  # ADDED
++    groups = defaultdict(list)  # ADDED
++    for r in records:  # ADDED
++        groups[r["roi"]].append(r)  # MODIFIED
++    keys = sorted(groups)  # ADDED
++    rng = np.random.default_rng(seed)  # ADDED
++    rng.shuffle(keys)  # ADDED
++    targets = [("test", test_n), ("val", val_n), ("train", train_n)]  # MODIFIED
++    cursor, result = 0, {}  # ADDED
++    for split, target in targets:  # ADDED
++        available = []  # ADDED
++        while len(available) < target and cursor < len(keys):  # ADDED
++            roi = keys[cursor]  # MODIFIED
++            cursor += 1  # MODIFIED
++            available += groups[roi]  # ADDED
++        if len(available) < target:  # ADDED
++            raise ValueError(  # MODIFIED
++                f"Not enough ROI-separated pairs for {split}: need {target}; have {len(available)}"  # MODIFIED
++            )  # MODIFIED
++        rng.shuffle(available)  # ADDED
++        result[split] = available[:target]  # ADDED
++    assert (  # MODIFIED
++        len(  # MODIFIED
++            set(r["roi"] for r in result["train"])  # MODIFIED
++            & set(r["roi"] for r in result["test"])  # MODIFIED
++        )  # MODIFIED
++        == 0  # MODIFIED
++    )  # MODIFIED
++    assert (  # MODIFIED
++        len(  # MODIFIED
++            set(r["roi"] for r in result["train"])  # MODIFIED
++            & set(r["roi"] for r in result["val"])  # MODIFIED
++        )  # MODIFIED
++        == 0  # MODIFIED
++    )  # MODIFIED
++    assert (  # MODIFIED
++        len(  # MODIFIED
++            set(r["roi"] for r in result["val"]) & set(r["roi"] for r in result["test"])  # MODIFIED
++        )  # MODIFIED
++        == 0  # MODIFIED
++    )  # MODIFIED
++    return result  # ADDED
++
++
++def write_manifest(splits, outdir):  # ADDED
++    outdir = Path(outdir)  # MODIFIED
++    outdir.mkdir(parents=True, exist_ok=True)  # MODIFIED
++    for split, records in splits.items():  # ADDED
++        with (outdir / f"{split}.jsonl").open("w") as f:  # MODIFIED
++            for row in sorted(records, key=lambda r: r["id"]):  # MODIFIED
++                f.write(json.dumps(dict(row, split=split)) + "\n")  # MODIFIED
++    with (outdir / "split_summary.json").open("w") as f:  # MODIFIED
++        json.dump(  # MODIFIED
++            {  # MODIFIED
++                s: {  # MODIFIED
++                    "patches": len(v),  # MODIFIED
++                    "rois": len(set(r["roi"] for r in v)),  # MODIFIED
++                    "sha256": file_hash(outdir / f"{s}.jsonl"),  # MODIFIED
++                }  # MODIFIED
++                for s, v in splits.items()  # MODIFIED
++            },  # MODIFIED
++            f,  # MODIFIED
++            indent=2,  # MODIFIED
++        )  # MODIFIED
++
++
++def file_hash(path):  # MODIFIED
++    digest = hashlib.sha256()  # MODIFIED
++    with Path(path).open("rb") as stream:  # MODIFIED
++        for chunk in iter(lambda: stream.read(1024 * 1024), b""):  # MODIFIED
++            digest.update(chunk)  # MODIFIED
++    return digest.hexdigest()  # MODIFIED
++
++
++def checked_manifest(path, split):  # MODIFIED
++    path = Path(path)  # MODIFIED
++    rows = load_jsonl(path)  # MODIFIED
++    summary = json.loads((path.parent / "split_summary.json").read_text())  # MODIFIED
++    if path.stem != split or not rows or any(r.get("split") != split for r in rows):  # MODIFIED
++        raise ValueError(f"Expected nonempty {split} manifest")  # MODIFIED
++    if summary[split]["sha256"] != file_hash(path) or summary[split]["patches"] != len(  # MODIFIED
++        rows  # MODIFIED
++    ):  # MODIFIED
++        raise ValueError("Manifest differs from the recorded split")  # MODIFIED
++    return rows  # MODIFIED
++
++
++def load_jsonl(path):  # ADDED
++    with open(path) as f:  # MODIFIED
++        return [json.loads(line) for line in f if line.strip()]  # MODIFIED
++
++
++def array_channels(s1, s2):  # ADDED
+     # ADDED: Use the SEN12MS band order.
+-    d = {'SAR_VV': s1[0].astype(np.float32), 'SAR_VH': s1[1].astype(np.float32)}
+-    d['SAR_DIFF'] = d['SAR_VV'] - d['SAR_VH']
+-    for b in STAT_CHANNELS[3:]:
+-        d[b] = s2[S2_BANDS.index(b)].astype(np.float32)
+-    return d
+-
+-
+-def fit_stats(train_manifest, outpath, max_patches=None, pixels_per_patch=128):
+-    """Estimate clipping quantiles from sampled training pixels."""
+-    rows = load_jsonl(train_manifest)
+-    if max_patches is not None: rows = rows[:max_patches]
+-    rng = np.random.default_rng(SEED)
+-    acc = {k:[] for k in STAT_CHANNELS}
+-    for i,r in enumerate(rows):
+-        s1,s2 = validate_pair(r)
+-        bands = array_channels(s1,s2)
+-        idx = rng.choice(256*256, min(pixels_per_patch, 256*256), replace=False)
+-        for k in STAT_CHANNELS:
+-            acc[k].append(bands[k].reshape(-1)[idx])
+-        if (i+1) % 1000 == 0: print('Stats sampled patches:',i+1)
+-    if not rows: raise ValueError('Empty train manifest')
+-    stats = {k: [float(np.percentile(np.concatenate(acc[k]),2)),float(np.percentile(np.concatenate(acc[k]),98))] for k in STAT_CHANNELS}
+-    if any(not hi > lo for lo,hi in stats.values()): raise ValueError('Degenerate clipping quantiles')
+-    path = Path(outpath); path.parent.mkdir(parents=True,exist_ok=True)
+-    path.write_text(json.dumps({'source_manifest':str(train_manifest), 'sampled_patches':len(rows),
+-                                'pixels_per_patch':pixels_per_patch,'seed':SEED,'stats':stats,
+-                                'warning':'Sampled pixel quantiles (reproducible estimate); not exact all-pixel quantiles'}, indent=2))
+-    return stats
+-
+-
+-def render_rgb(channels, names, stats):
+-    from PIL import Image
+-    rgb=[]
+-    for n in names:
+-        lo,hi = stats[n]
+-        rgb.append(np.clip((channels[n]-lo)/(hi-lo),0,1))
+-    a=(np.stack(rgb,axis=-1)*255).round().astype(np.uint8)
+-    return Image.fromarray(a,mode='RGB')
+-
+-
+-def render_examples(manifest, stats_file, outdir, max_patches=3):
+-    from PIL import Image
+-    stats = json.loads(Path(stats_file).read_text())['stats']
+-    rows = load_jsonl(manifest)
+-    split=Path(manifest).stem
+-    if split not in ('train','val','test'):
+-        raise ValueError('Manifest filename must be train.jsonl, val.jsonl or test.jsonl')
+-    outdir=Path(outdir); outdir.mkdir(parents=True,exist_ok=True)
+-    output=[]
+-    rng=np.random.default_rng(SEED)
+-    product_order=list(PRODUCTS)
+-    allocation=rng.permutation(len(rows)) % len(product_order)  # ADDED: Balance the three products.
+-    template_indices=rng.integers(0,8,size=len(rows))
+-    for index,r in enumerate(rows[:max_patches]):
+-        s1,s2 = validate_pair(r)
+-        channels = array_channels(s1,s2)
+-        img = render_rgb(channels, ['SAR_VV','SAR_VH','SAR_DIFF'], stats)
+-        inp = outdir / f'{r["id"]}_SAR.png'; img.save(inp)
+-        names = product_order if split=='test' else [product_order[int(allocation[index])]]
+-        for j,name in enumerate(names):
+-            bands=PRODUCTS[name]
+-            target = render_rgb(channels,bands,stats)
+-            targetpath=outdir/f'{r["id"]}_{name}_GT.png';target.save(targetpath)
+-            if split=='test':
+-                # ADDED: Reserve templates 8–11 for testing.
+-                t_idx=8+int(rng.integers(0,4))
+-            else: t_idx=int(template_indices[index])
+-            output.append({'id':r['id'],'roi':r['roi'],'split':split,'product':name,
+-                          'template_index':t_idx,'prompt':TEMPLATES[name][t_idx],
+-                          'image':str(inp.resolve()),'target':str(targetpath.resolve())})
+-    target_path = outdir/'examples.jsonl'
+-    with target_path.open('w') as f:
+-        for r in output: f.write(json.dumps(r)+'\n')
+-    print('Rendered',len(output),'paired image/prompt examples from',len(rows[:max_patches]),'patches:',target_path)
+-    return target_path
++    d = {"SAR_VV": s1[0].astype(np.float32), "SAR_VH": s1[1].astype(np.float32)}  # MODIFIED
++    d["SAR_DIFF"] = d["SAR_VV"] - d["SAR_VH"]  # MODIFIED
++    for b in STAT_CHANNELS[3:]:  # ADDED
++        d[b] = s2[S2_BANDS.index(b)].astype(np.float32)  # ADDED
++    return d  # ADDED
++
++
++def fit_stats(  # MODIFIED
++    train_manifest, outpath, max_patches=None, pixels_per_patch=128, seed=SEED  # MODIFIED
++):  # MODIFIED
++    """Estimate clipping quantiles from sampled training pixels."""  # ADDED
++    rows = checked_manifest(train_manifest, "train")  # MODIFIED
++    if pixels_per_patch < 1 or (max_patches is not None and max_patches < 1):  # MODIFIED
++        raise ValueError("Pixel and patch counts must be positive")  # MODIFIED
++    if max_patches is not None:  # MODIFIED
++        rows = rows[:max_patches]  # MODIFIED
++    rng = np.random.default_rng(seed)  # MODIFIED
++    acc = {k: [] for k in STAT_CHANNELS}  # MODIFIED
++    for i, r in enumerate(rows):  # MODIFIED
++        s1, s2 = validate_pair(r)  # MODIFIED
++        bands = array_channels(s1, s2)  # MODIFIED
++        idx = rng.choice(256 * 256, min(pixels_per_patch, 256 * 256), replace=False)  # MODIFIED
++        for k in STAT_CHANNELS:  # ADDED
++            acc[k].append(bands[k].reshape(-1)[idx])  # ADDED
++        if (i + 1) % 1000 == 0:  # MODIFIED
++            print("Stats sampled patches:", i + 1)  # MODIFIED
++    if not rows:  # MODIFIED
++        raise ValueError("Empty train manifest")  # MODIFIED
++    stats = {  # MODIFIED
++        k: [  # MODIFIED
++            float(np.percentile(np.concatenate(acc[k]), 2)),  # MODIFIED
++            float(np.percentile(np.concatenate(acc[k]), 98)),  # MODIFIED
++        ]  # MODIFIED
++        for k in STAT_CHANNELS  # MODIFIED
++    }  # MODIFIED
++    if any(not hi > lo for lo, hi in stats.values()):  # MODIFIED
++        raise ValueError("Degenerate clipping quantiles")  # MODIFIED
++    path = Path(outpath)  # MODIFIED
++    path.parent.mkdir(parents=True, exist_ok=True)  # MODIFIED
++    path.write_text(  # MODIFIED
++        json.dumps(  # MODIFIED
++            {  # MODIFIED
++                "source_manifest": str(Path(train_manifest).resolve()),  # MODIFIED
++                "source_sha256": file_hash(train_manifest),  # MODIFIED
++                "split": "train",  # MODIFIED
++                "sampled_patches": len(rows),  # MODIFIED
++                "pixels_per_patch": pixels_per_patch,  # MODIFIED
++                "seed": seed,  # MODIFIED
++                "stats": stats,  # MODIFIED
++                "warning": "Sampled pixel quantiles (reproducible estimate); not exact all-pixel quantiles",  # MODIFIED
++            },  # MODIFIED
++            indent=2,  # MODIFIED
++        )  # MODIFIED
++    )  # MODIFIED
++    return stats  # ADDED
++
++
++def render_rgb(channels, names, stats):  # ADDED
++    from PIL import Image  # ADDED
++
++    rgb = []  # MODIFIED
++    for n in names:  # ADDED
++        lo, hi = stats[n]  # MODIFIED
++        rgb.append(np.clip((channels[n] - lo) / (hi - lo), 0, 1))  # MODIFIED
++    a = (np.stack(rgb, axis=-1) * 255).round().astype(np.uint8)  # MODIFIED
++    return Image.fromarray(a, mode="RGB")  # MODIFIED
++
++
++def render_examples(manifest, stats_file, outdir, max_patches=3, seed=SEED):  # MODIFIED
++    from PIL import Image  # ADDED
++
++    stats_record = json.loads(Path(stats_file).read_text())  # MODIFIED
++    source = Path(stats_record["source_manifest"])  # MODIFIED
++    checked_manifest(source, "train")  # MODIFIED
++    if (  # MODIFIED
++        stats_record.get("split") != "train"  # MODIFIED
++        or file_hash(source) != stats_record["source_sha256"]  # MODIFIED
++    ):  # MODIFIED
++        raise ValueError("Statistics do not match their training manifest")  # MODIFIED
++    stats = stats_record["stats"]  # MODIFIED
++    split = Path(manifest).stem  # MODIFIED
++    if split not in ("train", "val", "test"):  # MODIFIED
++        raise ValueError(  # MODIFIED
++            "Manifest filename must be train.jsonl, val.jsonl or test.jsonl"  # MODIFIED
++        )  # MODIFIED
++    rows = checked_manifest(manifest, split)  # MODIFIED
++    outdir = Path(outdir)  # MODIFIED
++    outdir.mkdir(parents=True, exist_ok=True)  # MODIFIED
++    output = []  # MODIFIED
++    rng = np.random.default_rng(seed)  # MODIFIED
++    product_order = list(PRODUCTS)  # MODIFIED
++    allocation = rng.permutation(len(rows)) % len(  # MODIFIED
++        product_order  # MODIFIED
++    )  # MODIFIED: Balance the three products.
++    template_indices = rng.integers(0, 8, size=len(rows))  # MODIFIED
++    for index, r in enumerate(rows[:max_patches]):  # MODIFIED
++        s1, s2 = validate_pair(r)  # MODIFIED
++        channels = array_channels(s1, s2)  # MODIFIED
++        img = render_rgb(channels, ["SAR_VV", "SAR_VH", "SAR_DIFF"], stats)  # MODIFIED
++        inp = outdir / f"{r['id']}_SAR.png"  # MODIFIED
++        img.save(inp)  # MODIFIED
++        names = (  # MODIFIED
++            product_order  # MODIFIED
++            if split == "test"  # MODIFIED
++            else [product_order[int(allocation[index])]]  # MODIFIED
++        )  # MODIFIED
++        for j, name in enumerate(names):  # MODIFIED
++            bands = PRODUCTS[name]  # MODIFIED
++            target = render_rgb(channels, bands, stats)  # MODIFIED
++            targetpath = outdir / f"{r['id']}_{name}_GT.png"  # MODIFIED
++            target.save(targetpath)  # MODIFIED
++            if split == "test":  # MODIFIED
++                # MODIFIED: Reserve templates 8–11 for testing.
++                t_idx = 8 + int(rng.integers(0, 4))  # MODIFIED
++            else:  # MODIFIED
++                t_idx = int(template_indices[index])  # MODIFIED
++            output.append(  # MODIFIED
++                {  # MODIFIED
++                    "id": r["id"],  # MODIFIED
++                    "roi": r["roi"],  # MODIFIED
++                    "split": split,  # MODIFIED
++                    "product": name,  # MODIFIED
++                    "stats_sha256": file_hash(stats_file),  # MODIFIED
++                    "manifest_sha256": file_hash(manifest),  # MODIFIED
++                    "stats_sampled_patches": stats_record["sampled_patches"],  # MODIFIED
++                    "image_sha256": file_hash(inp),  # MODIFIED
++                    "target_sha256": file_hash(targetpath),  # MODIFIED
++                    "template_index": t_idx,  # MODIFIED
++                    "prompt": TEMPLATES[name][t_idx],  # MODIFIED
++                    "image": str(inp.resolve()),  # MODIFIED
++                    "target": str(targetpath.resolve()),  # MODIFIED
++                }  # MODIFIED
++            )  # MODIFIED
++    target_path = outdir / "examples.jsonl"  # MODIFIED
++    with target_path.open("w") as f:  # MODIFIED
++        for r in output:  # MODIFIED
++            f.write(json.dumps(r) + "\n")  # MODIFIED
++    print(  # MODIFIED
++        "Rendered",  # MODIFIED
++        len(output),  # MODIFIED
++        "paired image/prompt examples from",  # MODIFIED
++        len(rows[:max_patches]),  # MODIFIED
++        "patches:",  # MODIFIED
++        target_path,  # MODIFIED
++    )  # MODIFIED
++    return target_path  # ADDED
+--- original/prepare.py
++++ src/prepare.py
+@@ -1,281 +1,174 @@
+-# ADDED
+-"""Hardware checks, Run 0 inference, and A/B training diagnostics."""
+-import argparse
+-import csv
+-import hashlib
+-import json
+-import os
+-import shutil
+-from pathlib import Path
++"""Preparation commands and pretrained baseline diagnostics."""  # MODIFIED
+ 
+-import numpy as np
+-from phase2_core import (SEED, NOISE_POWER as FROZEN_POWER, MODEL_ID, MODEL_REVISION, native_schedule,
+-                         power_schedule, pair_inventory, validate_pair, group_splits,
+-                         write_manifest, load_jsonl, save_schedule, fit_stats, render_examples)
++import argparse  # ADDED
++import json  # ADDED
++import shutil  # ADDED
++from pathlib import Path  # ADDED
++from core import (  # MODIFIED
++    pair_inventory,  # MODIFIED
++    validate_pair,  # MODIFIED
++    group_splits,  # MODIFIED
++    write_manifest,  # MODIFIED
++    save_schedule,  # MODIFIED
++    fit_stats,  # MODIFIED
++    render_examples,  # MODIFIED
++)  # MODIFIED
++from config import load_config  # MODIFIED
++
++NOISE_POWER = 2.00  # ADDED
+ 
+ 
+-NOISE_POWER = 2.00  # ADDED
+-assert NOISE_POWER == FROZEN_POWER  # ADDED
++def gpu_report(outdir):  # ADDED
++    import torch  # ADDED
+ 
+-def gpu_report(outdir):
+-    import torch
+-    d=Path(outdir);d.mkdir(parents=True, exist_ok=True)
+-    gpu=torch.cuda.is_available()
++    cuda = torch.cuda.is_available()  # MODIFIED
+     mps = torch.backends.mps.is_available()  # ADDED
+-    info={'gpu_available':gpu,'pytorch':torch.__version__, 'torch_cuda':torch.version.cuda,
+-          'mps_available':mps, 'selected_device':'cuda' if gpu else ('mps' if mps else 'cpu'),  # ADDED
+-          'cuda_bf16_supported':bool(torch.cuda.is_bf16_supported()) if gpu else False,
+-          'colab_disk_free_gib':round(shutil.disk_usage('/content' if Path('/content').exists() else '/').free/2**30,2)}
+-    if gpu:
+-        p=torch.cuda.get_device_properties(0)
+-        info.update({'gpu_name':p.name,'vram_gib':round(p.total_memory/2**30,2)})
+-        print('GPU:',p.name,'VRAM GiB:',info['vram_gib'])
+-        if not info['cuda_bf16_supported']:
+-            print('STOP for official Phase1-frozen bf16 protocol: GPU cannot run bf16. fp16 diagnostic smoke is separately labeled.')
+-    elif mps: print('Apple MPS available: local inference supported; CUDA training smoke remains separate.')  # MODIFIED
+-    else: print('CPU environment: schedule and dataset tools available; accelerated inference unavailable.')  # MODIFIED
+-    (d/'gpu_preflight.json').write_text(json.dumps(info,indent=2))
+-    print(json.dumps(info,indent=2))
+-    return info
++    info = {  # MODIFIED
++        "gpu_available": cuda,  # MODIFIED
++        "mps_available": mps,  # MODIFIED
++        "selected_device": "cuda" if cuda else ("mps" if mps else "cpu"),  # MODIFIED
++        "pytorch": torch.__version__,  # MODIFIED
++        "torch_cuda": torch.version.cuda,  # MODIFIED
++        "cuda_bf16_supported": torch.cuda.is_bf16_supported() if cuda else False,  # MODIFIED
++        "disk_free_gib": round(shutil.disk_usage(Path.cwd()).free / 2**30, 2),  # MODIFIED
++    }  # MODIFIED
++    if cuda:  # MODIFIED
++        p = torch.cuda.get_device_properties(0)  # MODIFIED
++        info.update(gpu_name=p.name, vram_gib=round(p.total_memory / 2**30, 2))  # MODIFIED
++    out = Path(outdir)  # MODIFIED
++    out.mkdir(parents=True, exist_ok=True)  # MODIFIED
++    (out / "gpu_preflight.json").write_text(json.dumps(info, indent=2))  # MODIFIED
++    print(json.dumps(info, indent=2))  # MODIFIED
++    return info  # ADDED
+ 
+ 
+-def validate_dataset(args):
+-    records = pair_inventory(args.data_root)
+-    print('Paired summer patches:',len(records),'ROI groups:',len(set(r['roi'] for r in records)))
+-    for r in records[:min(args.check_pairs,len(records))]:
+-        validate_pair(r)
+-    print('GeoTIFF validity sampled:',min(args.check_pairs,len(records)),'pairs')
+-    if args.make_splits:
+-        # ADDED: Filter invalid pairs before splitting by ROI.
+-        valid, invalid = [], []
+-        for i,row in enumerate(records):
+-            try:
+-                validate_pair(row)
+-                valid.append(row)
+-            except Exception as exc:
+-                invalid.append({'id':row['id'],'reason':str(exc)})
+-            if (i+1)%1000==0: print('Validated actual S1/S2 patches:',i+1,'of',len(records))
+-        Path(args.outdir).mkdir(parents=True,exist_ok=True)
+-        (Path(args.outdir)/'excluded_invalid.json').write_text(json.dumps(invalid,indent=2))
+-        print('Usable paired patches after invalid exclusion:',len(valid),'excluded:',len(invalid))
+-        splits = group_splits(valid)
+-        write_manifest(splits,args.outdir)
+-        print('FROZEN SPLITS:',json.dumps({k:len(v) for k,v in splits.items()}))
+-    else:
+-        print('Pair inspection only. Run with --make-splits after complete summer archives are available.')
++def training_scheduler(which, config="experiment.json"):  # MODIFIED
++    from experiment import scheduler_for  # MODIFIED
++
++    return scheduler_for(which, load_config(config))  # MODIFIED
+ 
+ 
+-def import_model_components():
+-    import torch
+-    from diffusers import DDPMScheduler, UNet2DConditionModel, AutoencoderKL
+-    from transformers import CLIPTokenizer, CLIPTextModel
+-    return torch, DDPMScheduler, UNet2DConditionModel, AutoencoderKL, CLIPTokenizer, CLIPTextModel
++def validate_dataset(args):  # ADDED
++    c = load_config(args.config)  # MODIFIED
++    records = pair_inventory(args.data_root)  # ADDED
++    if not args.make_splits:  # MODIFIED
++        for row in records[: args.check_pairs]:  # MODIFIED
++            validate_pair(row)  # MODIFIED
++        print("Inspected pairs:", min(args.check_pairs, len(records)))  # MODIFIED
++        return  # MODIFIED
++    valid, invalid = [], []  # ADDED
++    for i, row in enumerate(records):  # MODIFIED
++        try:  # ADDED
++            validate_pair(row)  # ADDED
++            valid.append(row)  # ADDED
++        except (ValueError, OSError) as exc:  # MODIFIED
++            invalid.append({"id": row["id"], "reason": str(exc)})  # MODIFIED
++        if (i + 1) % 1000 == 0:  # MODIFIED
++            print("Validated pairs:", i + 1, flush=True)  # MODIFIED
++    out = Path(args.outdir)  # MODIFIED
++    out.mkdir(parents=True, exist_ok=True)  # MODIFIED
++    (out / "excluded_invalid.json").write_text(json.dumps(invalid, indent=2))  # MODIFIED
++    splits = group_splits(  # MODIFIED
++        valid,  # MODIFIED
++        train_n=c["train_patches"],  # MODIFIED
++        val_n=c["val_patches"],  # MODIFIED
++        test_n=c["test_patches"],  # MODIFIED
++        seed=c["seed"],  # MODIFIED
++    )  # MODIFIED
++    write_manifest(splits, out)  # MODIFIED
++    print({split: len(rows) for split, rows in splits.items()})  # MODIFIED
+ 
+ 
+-def training_scheduler(which):
+-    torch, DDPMScheduler, *rest = import_model_components()
+-    beta,alpha,ab = native_schedule()
+-    powered_betas, powered_ab = power_schedule()
+-    if which == 'A':
+-        scheduler = DDPMScheduler(num_train_timesteps=1000,beta_start=.00085,beta_end=.012,
+-                                  beta_schedule='scaled_linear',prediction_type='epsilon')
+-        expected=ab
+-    else:
+-        scheduler = DDPMScheduler(num_train_timesteps=1000,trained_betas=powered_betas,
+-                                  prediction_type='epsilon')  # ADDED
+-        expected=powered_ab
+-    np.testing.assert_allclose(scheduler.alphas_cumprod.cpu().numpy(),expected,rtol=1e-5,atol=1e-7)
+-    return scheduler
++def checkpoint_inspect(outdir, config="experiment.json"):  # MODIFIED
++    from huggingface_hub import hf_hub_download  # MODIFIED
++
++    c = load_config(config)  # MODIFIED
++    names = [  # MODIFIED
++        "scheduler/scheduler_config.json",  # MODIFIED
++        "unet/config.json",  # MODIFIED
++        "tokenizer/tokenizer_config.json",  # MODIFIED
++    ]  # MODIFIED
++    loaded = {  # MODIFIED
++        name: json.loads(  # MODIFIED
++            Path(  # MODIFIED
++                hf_hub_download(  # MODIFIED
++                    c["model_id"], filename=name, revision=c["model_revision"]  # MODIFIED
++                )  # MODIFIED
++            ).read_text()  # MODIFIED
++        )  # MODIFIED
++        for name in names  # MODIFIED
++    }  # MODIFIED
++    s = loaded[names[0]]  # MODIFIED
++    for key in ("beta_schedule", "prediction_type"):  # MODIFIED
++        expected = c["beta_schedule"] if key == "beta_schedule" else "epsilon"  # MODIFIED
++        if s[key] != expected:  # MODIFIED
++            raise ValueError(f"Checkpoint {key} mismatch")  # MODIFIED
++    if (  # MODIFIED
++        s["beta_start"] != c["beta_start"]  # MODIFIED
++        or s["beta_end"] != c["beta_end"]  # MODIFIED
++        or s["num_train_timesteps"] != c["noise_steps"]  # MODIFIED
++        or loaded[names[1]]["in_channels"] != 8  # MODIFIED
++    ):  # MODIFIED
++        raise ValueError("Checkpoint conflicts with declared model/schedule")  # MODIFIED
++    out = Path(outdir)  # MODIFIED
++    out.mkdir(parents=True, exist_ok=True)  # MODIFIED
++    (out / "checkpoint_config_audit.json").write_text(  # MODIFIED
++        json.dumps(  # MODIFIED
++            {"repo": c["model_id"], "revision": c["model_revision"], "loaded": loaded},  # MODIFIED
++            indent=2,  # MODIFIED
++        )  # MODIFIED
++    )  # MODIFIED
++    print("Checkpoint configurations verified; weights were not loaded.")  # MODIFIED
+ 
+ 
+-def checkpoint_inspect(outdir):
+-    from huggingface_hub import hf_hub_download
+-    out=Path(outdir);out.mkdir(parents=True,exist_ok=True)
+-    names=['scheduler/scheduler_config.json','unet/config.json','tokenizer/tokenizer_config.json']
+-    loaded={}
+-    for name in names:
+-        path=hf_hub_download(repo_id=MODEL_ID,filename=name,revision=MODEL_REVISION)
+-        loaded[name]=json.loads(Path(path).read_text())
+-    sch=loaded[names[0]]; unet=loaded[names[1]]
+-    assert sch['beta_schedule']=='scaled_linear' and sch['prediction_type']=='epsilon'
+-    assert sch['num_train_timesteps']==1000 and sch['beta_start']==.00085 and sch['beta_end']==.012
+-    assert unet['in_channels']==8, 'STOP: Expected pretrained 8-channel conditioning UNet'
+-    (out/'checkpoint_config_audit.json').write_text(json.dumps({'repo':MODEL_ID,'revision':MODEL_REVISION,'loaded':loaded},indent=2))
+-    print('Small configuration files verified; NOTE: large model weights not downloaded by this command.')
++def main():  # ADDED
++    p = argparse.ArgumentParser(description="Phase 2 data and schedule preparation")  # MODIFIED
++    p.add_argument("--config", default="experiment.json")  # MODIFIED
++    sub = p.add_subparsers(dest="command", required=True)  # MODIFIED
++    for command in ("preflight", "schedule", "checkpoint"):  # MODIFIED
++        s = sub.add_parser(command)  # MODIFIED
++        s.add_argument("--outdir", default=f"outputs/{command}")  # MODIFIED
++    s = sub.add_parser("dataset")  # MODIFIED
++    s.add_argument("--data-root", required=True)  # MODIFIED
++    s.add_argument("--outdir", default="outputs/manifests")  # MODIFIED
++    s.add_argument("--check-pairs", type=int, default=12)  # MODIFIED
++    s.add_argument("--make-splits", action="store_true")  # MODIFIED
++    s = sub.add_parser("stats")  # MODIFIED
++    s.add_argument("--train-manifest", required=True)  # MODIFIED
++    s.add_argument("--out", default="outputs/train_stats.json")  # MODIFIED
++    s.add_argument("--max-patches", type=int)  # MODIFIED
++    s.add_argument("--pixels-per-patch", type=int, default=128)  # MODIFIED
++    s = sub.add_parser("render")  # MODIFIED
++    s.add_argument("--manifest", required=True)  # MODIFIED
++    s.add_argument("--stats", required=True)  # MODIFIED
++    s.add_argument("--outdir", required=True)  # MODIFIED
++    s.add_argument("--max-patches", type=int, default=10000)  # MODIFIED
++    args = p.parse_args()  # MODIFIED
++    if args.command == "preflight":  # MODIFIED
++        gpu_report(args.outdir)  # MODIFIED
++    elif args.command == "schedule":  # MODIFIED
++        save_schedule(args.outdir)  # MODIFIED
++    elif args.command == "checkpoint":  # MODIFIED
++        checkpoint_inspect(args.outdir, args.config)  # MODIFIED
++    elif args.command == "dataset":  # MODIFIED
++        validate_dataset(args)  # MODIFIED
++    elif args.command == "stats":  # MODIFIED
++        fit_stats(  # MODIFIED
++            args.train_manifest,  # MODIFIED
++            args.out,  # MODIFIED
++            args.max_patches,  # MODIFIED
++            args.pixels_per_patch,  # MODIFIED
++            seed=load_config(args.config)["seed"],  # MODIFIED
++        )  # MODIFIED
++    elif args.command == "render":  # MODIFIED
++        render_examples(  # MODIFIED
++            args.manifest,  # MODIFIED
++            args.stats,  # MODIFIED
++            args.outdir,  # MODIFIED
++            args.max_patches,  # MODIFIED
++            seed=load_config(args.config)["seed"],  # MODIFIED
++        )  # MODIFIED
+ 
+ 
+-def run_zero(examples_path, outdir, count=3, device='auto'):  # MODIFIED
+-    """Generate baseline outputs without fine-tuning."""
+-    import torch
+-    from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
+-    from PIL import Image
+-    if count < 1: raise ValueError('count must be positive')  # ADDED
+-    if device == 'auto':  # ADDED
+-        device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')  # ADDED
+-    if device == 'cuda' and not torch.cuda.is_available(): raise RuntimeError('CUDA unavailable')  # ADDED
+-    if device == 'mps' and not torch.backends.mps.is_available(): raise RuntimeError('MPS unavailable')  # ADDED
+-    output=Path(outdir);output.mkdir(parents=True,exist_ok=True)
+-    examples=load_jsonl(examples_path)
+-    if not examples: raise ValueError('No prepared examples supplied')
+-    # ADDED
+-    dtype = (torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16) if device == 'cuda' else torch.float32  # MODIFIED: Use float32 on MPS/CPU.
+-    print('Loading actual pretrained checkpoint. First download is multi-GB.')
+-    pipe=StableDiffusionInstructPix2PixPipeline.from_pretrained(
+-        MODEL_ID,revision=MODEL_REVISION,torch_dtype=dtype)
+-    assert pipe.unet.config.in_channels==8
+-    pipe.scheduler=EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+-    if device == 'cuda': pipe.enable_model_cpu_offload()  # MODIFIED
+-    else:  # ADDED: MPS uses direct device placement.
+-        pipe.to(device)  # ADDED
+-        pipe.enable_attention_slicing()  # ADDED
+-        pipe.enable_vae_slicing()  # ADDED
+-    outputs=[]
+-    for idx,row in enumerate(examples[:count]):
+-        image=Image.open(row['image']).convert('RGB')
+-        g=torch.Generator(device='cuda' if device == 'cuda' else 'cpu').manual_seed(SEED+idx)  # MODIFIED: MPS uses CPU-generated noise.
+-        with torch.inference_mode():
+-            edited=pipe(prompt=row['prompt'],image=image,num_inference_steps=50,
+-                        guidance_scale=7.5,image_guidance_scale=1.5,generator=g).images[0]
+-        path=output/f'Run0_{idx:03d}_{row["id"]}_{row["product"]}.png'
+-        edited.save(path)
+-        outputs.append({'device':device,'dtype':str(dtype),  # MODIFIED
+-                        'id':row['id'],'product':row['product'],'seed':SEED+idx,
+-                        'prediction':str(path),'source':row['image'],'target':row['target'],
+-                        'checkpoint':MODEL_ID,'revision':MODEL_REVISION,'fine_tuned':False})
+-        print('Saved real pretrained Run 0 image:',path)
+-    (output/'run0_manifest.json').write_text(json.dumps(outputs,indent=2))
+-    del pipe
+-    if device == 'cuda': torch.cuda.empty_cache()  # MODIFIED
+-    elif device == 'mps': torch.mps.empty_cache()  # ADDED
+-
+-
+-def tensor_from_png(filename,device='cuda'):
+-    from PIL import Image
+-    import torch
+-    img=np.asarray(Image.open(filename).convert('RGB'),dtype=np.float32)
+-    return torch.from_numpy((img/127.5-1.0).transpose(2,0,1)).unsqueeze(0).to(device)
+-
+-
+-def one_run_smoke(which,rows,outdir,steps=1):
+-    import gc
+-    import torch
+-    import torch.nn.functional as F
+-    from contextlib import nullcontext
+-    _, _, UNet2DConditionModel, AutoencoderKL, CLIPTokenizer, CLIPTextModel=import_model_components()
+-    assert torch.cuda.is_available()
+-    torch.manual_seed(SEED);torch.cuda.manual_seed_all(SEED)
+-    dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+-    if dtype==torch.float16:
+-        print('DIAGNOSTIC ONLY: fp16 used because this GPU cannot run declared bf16. Not official Run A/B.')
+-    vae=AutoencoderKL.from_pretrained(MODEL_ID,subfolder='vae',revision=MODEL_REVISION,torch_dtype=dtype).eval().to('cuda')
+-    text_encoder=CLIPTextModel.from_pretrained(MODEL_ID,subfolder='text_encoder',revision=MODEL_REVISION,torch_dtype=dtype).eval().to('cuda')
+-    tokenizer=CLIPTokenizer.from_pretrained(MODEL_ID,subfolder='tokenizer',revision=MODEL_REVISION)
+-    # MODIFIED: Preserve the pretrained eight-channel convolution.
+-    unet=UNet2DConditionModel.from_pretrained(MODEL_ID,subfolder='unet',revision=MODEL_REVISION,
+-                                               torch_dtype=torch.float32).to('cuda')
+-    assert unet.config.in_channels==8 and unet.conv_in.weight.shape[1]==8
+-    conv_sha=hashlib.sha256(unet.conv_in.weight.detach().float().cpu().numpy().tobytes()).hexdigest()
+-    print(f'Run {which}, verified 8-channel pretrained conv_in SHA256:',conv_sha)
+-    unet.enable_gradient_checkpointing();unet.train()
+-    vae.requires_grad_(False);text_encoder.requires_grad_(False)
+-    sch=training_scheduler(which)
+-    # ADDED: Eight-bit optimizer is for diagnostics only.
+-    import bitsandbytes as bnb
+-    optimizer=bnb.optim.AdamW8bit(unet.parameters(),lr=5e-5,weight_decay=.01)
+-    scaler=torch.cuda.amp.GradScaler(enabled=(dtype==torch.float16))
+-    os.makedirs(outdir,exist_ok=True)
+-    losses=[]
+-    # ADDED: Match A/B noise and timesteps after model loading.
+-    torch.manual_seed(SEED+123);torch.cuda.manual_seed_all(SEED+123)
+-    for i in range(steps):
+-        row=rows[i % len(rows)]
+-        src=tensor_from_png(row['image']); tgt=tensor_from_png(row['target'])
+-        with torch.no_grad(),torch.autocast('cuda',dtype=dtype):
+-            lat=vae.encode(tgt.to(dtype)).latent_dist.sample()*vae.config.scaling_factor
+-            cond=vae.encode(src.to(dtype)).latent_dist.mode()
+-            tok=tokenizer([row['prompt']],max_length=tokenizer.model_max_length,
+-                          padding='max_length',truncation=True,return_tensors='pt').input_ids.to('cuda')
+-            enc=text_encoder(tok)[0]
+-            # ADDED: Conditioning dropout, p=0.05.
+-            r=torch.rand(1,device='cuda'); p=.05
+-            if r.item() < 2*p:
+-                empty=tokenizer([''],max_length=tokenizer.model_max_length,padding='max_length',
+-                                truncation=True,return_tensors='pt').input_ids.to('cuda')
+-                enc=text_encoder(empty)[0]
+-            if (r.item()<p) or (2*p<=r.item()<3*p): cond=torch.zeros_like(cond)
+-            noise=torch.randn_like(lat)
+-            time=torch.randint(0,1000,(1,),device='cuda',dtype=torch.long)
+-            noisy=sch.add_noise(lat,noise,time)
+-            x=torch.cat([noisy,cond],dim=1)
+-        optimizer.zero_grad(set_to_none=True)
+-        with torch.autocast('cuda',dtype=dtype):
+-            pred=unet(x,time,enc,return_dict=False)[0]
+-            loss=F.mse_loss(pred.float(),noise.float())
+-        assert torch.isfinite(loss).item(),f'Run {which} step {i} nonfinite loss'
+-        scaler.scale(loss).backward()
+-        scaler.unscale_(optimizer)
+-        torch.nn.utils.clip_grad_norm_(unet.parameters(),1.0)
+-        scaler.step(optimizer);scaler.update()
+-        losses.append({'diagnostic_step':i+1,'loss':float(loss.item()),'noise_schedule':which})
+-        print(f'DIAGNOSTIC Run {which} step {i+1}/{steps} loss={loss.item():.6f}')
+-    outdir=Path(outdir)
+-    with (outdir/f'smoke_{which}_diagnostic.csv').open('w',newline='') as f:
+-        w=csv.DictWriter(f,fieldnames=['diagnostic_step','loss','noise_schedule']);w.writeheader();w.writerows(losses)
+-    (outdir/f'smoke_{which}_audit.json').write_text(json.dumps({
+-        'initial_conv_in_sha256':conv_sha,'pretrained_checkpoint':MODEL_ID,
+-        'revision':MODEL_REVISION,'power':NOISE_POWER if which=='B' else 1.0,
+-        'steps':steps,'dtype':str(dtype),'optimizer':'AdamW8bit (diagnostic only)',
+-        'declared_precision_bf16_met':bool(dtype==torch.bfloat16),
+-        'note':'NO official fine-tuning; diagnostic steps / tiny train-only sample; not Phase 2 epoch/train_loss CSV'},indent=2))
+-    del optimizer,unet,vae,text_encoder,sch,scaler
+-    gc.collect();torch.cuda.empty_cache()
+-    return conv_sha
+-
+-
+-def two_run_smoke(examples_path,outdir,steps):
+-    import torch
+-    gpu_report(outdir)
+-    if not torch.cuda.is_available():  # MODIFIED
+-        raise RuntimeError('This diagnostic uses CUDA autocast and bitsandbytes. On Mac use local checks and Run 0; the A/B gradient smoke needs a CUDA environment.')  # ADDED
+-    if steps < 1: raise ValueError('steps must be positive')  # ADDED
+-    rows=load_jsonl(examples_path)
+-    if not rows: raise ValueError('Provide rendered TRAIN examples, never test examples!')
+-    if any(row.get('split') != 'train' for row in rows):  # ADDED
+-        raise ValueError('Smoke test accepts only examples explicitly labeled split=train')  # ADDED
+-    a=one_run_smoke('A',rows,outdir,steps)
+-    b=one_run_smoke('B',rows,outdir,steps)
+-    if a != b: raise RuntimeError('STOP: A/B pretrained conv weight hashes differ!')
+-    print('PASS: A/B loaded identical initial 8-channel conv weights. Diagnostic only; official runs not started.')
+-
+-
+-def main():
+-    p=argparse.ArgumentParser(description='Phase 2 Colab Free starter, no fabricated training evidence')
+-    sub=p.add_subparsers(dest='command',required=True)
+-    def add(cmd,*opts):
+-        z=sub.add_parser(cmd)
+-        for a,kw in opts: z.add_argument(a,**kw)
+-        return z
+-    add('preflight', ('--outdir',dict(default='outputs/preflight')))
+-    add('schedule', ('--outdir',dict(default='outputs/schedule')))
+-    add('checkpoint',('--outdir',dict(default='outputs/checkpoint')))
+-    add('dataset',('--data-root',dict(required=True)),('--outdir',dict(default='outputs/manifests')),
+-        ('--check-pairs',dict(type=int,default=10)),('--make-splits',dict(action='store_true')))
+-    add('stats',('--train-manifest',dict(required=True)),('--out',dict(default='outputs/train_stats.json')),
+-        ('--max-patches',dict(type=int,default=None)),('--pixels-per-patch',dict(type=int,default=128)))
+-    add('render',('--manifest',dict(required=True)),('--stats',dict(required=True)),
+-        ('--outdir',dict(required=True)),('--max-patches',dict(type=int,default=3)))
+-    add('run0',('--examples',dict(required=True)),('--outdir',dict(default='outputs/run0')),
+-        ('--count',dict(type=int,default=3)),('--device',dict(choices=['auto','mps','cuda','cpu'],default='auto')))  # MODIFIED
+-    add('smoke',('--train-examples',dict(required=True)),('--outdir',dict(default='outputs/smoke')),
+-        ('--steps',dict(type=int,default=1)))
+-    args=p.parse_args()
+-    if args.command=='preflight':gpu_report(args.outdir)
+-    elif args.command=='schedule':save_schedule(args.outdir)
+-    elif args.command=='checkpoint':checkpoint_inspect(args.outdir)
+-    elif args.command=='dataset':validate_dataset(args)
+-    elif args.command=='stats':fit_stats(args.train_manifest,args.out,args.max_patches,args.pixels_per_patch)
+-    elif args.command=='render':render_examples(args.manifest,args.stats,args.outdir,args.max_patches)
+-    elif args.command=='run0':run_zero(args.examples,args.outdir,args.count,args.device)  # MODIFIED
+-    elif args.command=='smoke':two_run_smoke(args.train_examples,args.outdir,args.steps)
+-
+-if __name__=='__main__':main()
++if __name__ == "__main__":  # MODIFIED
++    main()  # MODIFIED

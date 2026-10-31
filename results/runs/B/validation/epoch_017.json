@@ -1,0 +1,7 @@
+{
+  "epoch": 17,
+  "metric": "native_schedule_epsilon_mse",
+  "value": 0.21299931243946776,
+  "count": 1000,
+  "native_schedule_for_both_runs": true
+}

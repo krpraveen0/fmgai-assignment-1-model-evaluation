@@ -1,0 +1,185 @@
+[
+  {
+    "id": "1868_summer_101_p100",
+    "product": "true_color",
+    "prompt": "Render the corresponding natural RGB product.",
+    "seed": 3800927953,
+    "run": "RunB",
+    "target": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/test/1868_summer_101_p100_true_color_GT.png",
+    "image": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/test/1868_summer_101_p100_SAR.png",
+    "image_sha256": "1fd4f4d6e9b23cb63ace95c70dc46189dc3923d4e999d1d94f9805a3b2ee313c",
+    "prediction": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_1868_summer_101_p100_true_color.png",
+    "prediction_sha256": "ac2214f69588c6244b90274631dd3e70a646791347754aa00c34d8976d993adc",
+    "target_sha256": "62e1475768a65a0fa880d4e2d2a4dc1095e53ecd179754d8b64280bc2e90b42e",
+    "stats_sha256": "082af78f3786c2d7eda56bb71e8a1607fe568e08e97dc4ca6fa28c007f474990",
+    "states": [
+      {
+        "step_index": 0,
+        "transition_from_t": 999.0,
+        "state_t": 978.6122436523438,
+        "sigma": 12.936777114868164,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step000_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step000_latent.png",
+        "sha256": "b6b558a674a563024564aaf39bae6e7fbc5b7fd9e21d12aaa8d145c4e994b0b5"
+      },
+      {
+        "step_index": 12,
+        "transition_from_t": 754.346923828125,
+        "state_t": 733.9591674804688,
+        "sigma": 3.8308441638946533,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step012_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step012_latent.png",
+        "sha256": "241d54e6f1b4c7c45ab8464971c483d24dcb5e8a9b7b7750c4a854470f9cb0c3"
+      },
+      {
+        "step_index": 24,
+        "transition_from_t": 509.6938781738281,
+        "state_t": 489.3061218261719,
+        "sigma": 1.561659574508667,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step024_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step024_latent.png",
+        "sha256": "d49e745821b8dc8e41694d3ca73be265bc2638752e0605fb8ff26e844ed783a8"
+      },
+      {
+        "step_index": 36,
+        "transition_from_t": 265.0408020019531,
+        "state_t": 244.65306091308594,
+        "sigma": 0.6819884777069092,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step036_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step036_latent.png",
+        "sha256": "507ddb1fb9a6d321b57c990123a6d98f62a7164cf1f83e975c1480fcd4db075f"
+      },
+      {
+        "step_index": 48,
+        "transition_from_t": 20.387754440307617,
+        "state_t": 0.0,
+        "sigma": 0.029167532920837402,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step048_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00000_step048_latent.png",
+        "sha256": "9783f10477ae6459526f38f8343554cafa7d25248de9daff245671c3ecdf535b"
+      }
+    ]
+  },
+  {
+    "id": "1868_summer_101_p100",
+    "product": "false_color_ir",
+    "prompt": "Create the optical composite using NIR, red and green.",
+    "seed": 1070928356,
+    "run": "RunB",
+    "target": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/test/1868_summer_101_p100_false_color_ir_GT.png",
+    "image": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/test/1868_summer_101_p100_SAR.png",
+    "image_sha256": "1fd4f4d6e9b23cb63ace95c70dc46189dc3923d4e999d1d94f9805a3b2ee313c",
+    "prediction": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_1868_summer_101_p100_false_color_ir.png",
+    "prediction_sha256": "d565928fbb712e3a54b5116a3bb3eea9fb9dfa5c5d6ebf1233a96d9ce62943b6",
+    "target_sha256": "e439e2f779db384e5ea5484c205e9e8845def1bc27edaaf8d994cd2176d66f2a",
+    "stats_sha256": "082af78f3786c2d7eda56bb71e8a1607fe568e08e97dc4ca6fa28c007f474990",
+    "states": [
+      {
+        "step_index": 0,
+        "transition_from_t": 999.0,
+        "state_t": 978.6122436523438,
+        "sigma": 12.936777114868164,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step000_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step000_latent.png",
+        "sha256": "e08ed8d749a8625f4a643b6bdf75c13d4c45d5ebda8d774ad62e80a0fa810bd4"
+      },
+      {
+        "step_index": 12,
+        "transition_from_t": 754.346923828125,
+        "state_t": 733.9591674804688,
+        "sigma": 3.8308441638946533,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step012_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step012_latent.png",
+        "sha256": "af04cda55500c9871554f220413e33a4dc03a0acc65eb47ec0660ce564a6e4ad"
+      },
+      {
+        "step_index": 24,
+        "transition_from_t": 509.6938781738281,
+        "state_t": 489.3061218261719,
+        "sigma": 1.561659574508667,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step024_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step024_latent.png",
+        "sha256": "083855c0c0edb42273da2793655c9e2ac046e141d1002b7919da93283f355ed2"
+      },
+      {
+        "step_index": 36,
+        "transition_from_t": 265.0408020019531,
+        "state_t": 244.65306091308594,
+        "sigma": 0.6819884777069092,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step036_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step036_latent.png",
+        "sha256": "dabe55adc4b43e58b49bcaf37bf89ccfbae2e41f39a5abf42f4b164ce8f982b7"
+      },
+      {
+        "step_index": 48,
+        "transition_from_t": 20.387754440307617,
+        "state_t": 0.0,
+        "sigma": 0.029167532920837402,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step048_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00001_step048_latent.png",
+        "sha256": "a1e88d8d45bda90e6deb118ae8c5008c6f11b4f01d620d48167cfde4516abc01"
+      }
+    ]
+  },
+  {
+    "id": "1868_summer_101_p100",
+    "product": "shortwave_ir",
+    "prompt": "Convert this SAR input to shortwave infrared.",
+    "seed": 3303959759,
+    "run": "RunB",
+    "target": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/test/1868_summer_101_p100_shortwave_ir_GT.png",
+    "image": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/prepared/test/1868_summer_101_p100_SAR.png",
+    "image_sha256": "1fd4f4d6e9b23cb63ace95c70dc46189dc3923d4e999d1d94f9805a3b2ee313c",
+    "prediction": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_1868_summer_101_p100_shortwave_ir.png",
+    "prediction_sha256": "4c90fb5746793348ba44ad1647b3352ca68000bae50dd491b1cf4ac728687f48",
+    "target_sha256": "64a5a691b856ef6f2fddf7642b21b8c92d572a47c15f8ec43c2483d07203b43f",
+    "stats_sha256": "082af78f3786c2d7eda56bb71e8a1607fe568e08e97dc4ca6fa28c007f474990",
+    "states": [
+      {
+        "step_index": 0,
+        "transition_from_t": 999.0,
+        "state_t": 978.6122436523438,
+        "sigma": 12.936777114868164,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step000_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step000_latent.png",
+        "sha256": "25253b1a514a32c07859a67fcfe7eea957fe2e190c0359bdfaa372c58896b19d"
+      },
+      {
+        "step_index": 12,
+        "transition_from_t": 754.346923828125,
+        "state_t": 733.9591674804688,
+        "sigma": 3.8308441638946533,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step012_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step012_latent.png",
+        "sha256": "8d9991f6139adc26563029be0ca9c0ad9c3fca85b5078531dde0deb9da300095"
+      },
+      {
+        "step_index": 24,
+        "transition_from_t": 509.6938781738281,
+        "state_t": 489.3061218261719,
+        "sigma": 1.561659574508667,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step024_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step024_latent.png",
+        "sha256": "43b91bfe087c207233ad5d14e321b71b6afa15d1bfc56aa9d5b007118ef435ec"
+      },
+      {
+        "step_index": 36,
+        "transition_from_t": 265.0408020019531,
+        "state_t": 244.65306091308594,
+        "sigma": 0.6819884777069092,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step036_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step036_latent.png",
+        "sha256": "462fb3826f8d23295109fb3a3d265e68dcd028ad3f86daaa4ad701769ab3715c"
+      },
+      {
+        "step_index": 48,
+        "transition_from_t": 20.387754440307617,
+        "state_t": 0.0,
+        "sigma": 0.029167532920837402,
+        "latent": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step048_latent.pt",
+        "preview": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/trajectories/B/RunB_00002_step048_latent.png",
+        "sha256": "cead79957cb5a864b79698ab781cc3e74eade26daef467774d82d2c88ea79f6c"
+      }
+    ]
+  }
+]

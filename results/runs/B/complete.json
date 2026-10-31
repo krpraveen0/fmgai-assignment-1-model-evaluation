@@ -1,0 +1,5 @@
+{
+  "completed_epochs": 20,
+  "initial_model_sha256": "2154f0834476a36fe15382142f5421b7a60264bec38955f7c914284598400b23",
+  "final_checkpoint": "/Users/praveenkumar/Documents/ChatGPT/Foundation of Models and GenAI/Phase2_Colab_Starter/outputs/experiment/runs/B/checkpoints/epoch_020/unet"
+}
